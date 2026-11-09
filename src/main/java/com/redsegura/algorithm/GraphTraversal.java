@@ -8,14 +8,14 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Implementacion manual de los recorridos BFS y DFS para el grafo mixto
- * RedSegura.
+ * Implementacion manual de BFS y DFS para el grafo mixto RedSegura.
  */
 public class GraphTraversal {
 
@@ -32,12 +32,16 @@ public class GraphTraversal {
     }
 
     /**
-     * Obtiene los vecinos alcanzables respetando la direccion de las
-     * conexiones.
+     * Construye una lista de adyacencia temporal. Respeta la direccion de las
+     * aristas y omite las bloqueadas.
      */
-    private List<Vertex> getNeighbors(String vertexId) {
+    private Map<String, List<Vertex>> buildAdjacency() {
 
-        List<Vertex> neighbors = new ArrayList<>();
+        Map<String, List<Vertex>> adjacency = new LinkedHashMap<>();
+
+        for (Vertex vertex : graph.getVertices()) {
+            adjacency.put(vertex.getId(), new ArrayList<>());
+        }
 
         for (Edge edge : graph.getEdges()) {
 
@@ -48,25 +52,24 @@ public class GraphTraversal {
             String source = edge.getSource().getId();
             String destination = edge.getDestination().getId();
 
-            if (source.equals(vertexId)) {
-                neighbors.add(edge.getDestination());
-            }
+            adjacency.get(source).add(edge.getDestination());
 
-            if (!edge.isDirected()
-                    && destination.equals(vertexId)) {
-                neighbors.add(edge.getSource());
+            if (!edge.isDirected()) {
+                adjacency.get(destination).add(edge.getSource());
             }
         }
 
-        return neighbors;
+        return adjacency;
     }
 
     /**
-     * BFS: recorrido por amplitud. Utiliza una cola FIFO.
+     * BFS: recorrido por amplitud mediante una cola FIFO.
      */
     public List<Vertex> bfs(String startId) {
 
         validateStart(startId);
+
+        Map<String, List<Vertex>> adjacency = buildAdjacency();
 
         List<Vertex> result = new ArrayList<>();
         Set<String> visited = new LinkedHashSet<>();
@@ -82,8 +85,7 @@ public class GraphTraversal {
             Vertex current = queue.removeFirst();
             result.add(current);
 
-            for (Vertex neighbor
-                    : getNeighbors(current.getId())) {
+            for (Vertex neighbor : adjacency.get(current.getId())) {
 
                 if (visited.add(neighbor.getId())) {
                     queue.addLast(neighbor);
@@ -95,11 +97,13 @@ public class GraphTraversal {
     }
 
     /**
-     * DFS: recorrido en profundidad. Utiliza una pila LIFO.
+     * DFS: recorrido en profundidad mediante una pila LIFO.
      */
     public List<Vertex> dfs(String startId) {
 
         validateStart(startId);
+
+        Map<String, List<Vertex>> adjacency = buildAdjacency();
 
         List<Vertex> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
@@ -117,11 +121,10 @@ public class GraphTraversal {
 
             result.add(current);
 
-            List<Vertex> neighbors
-                    = getNeighbors(current.getId());
+            List<Vertex> neighbors = adjacency.get(current.getId());
 
             // Se insertan en orden inverso para conservar
-            // el orden de las conexiones al recorrer.
+            // el orden original de las conexiones.
             for (int i = neighbors.size() - 1; i >= 0; i--) {
 
                 Vertex neighbor = neighbors.get(i);
@@ -135,6 +138,9 @@ public class GraphTraversal {
         return result;
     }
 
+    /**
+     * Valida el identificador inicial.
+     */
     private void validateStart(String startId) {
 
         if (startId == null || startId.isBlank()) {

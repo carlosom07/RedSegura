@@ -13,8 +13,8 @@ import java.util.Map;
 import java.util.PriorityQueue;
 
 /**
- * Implementacion manual del algoritmo de Dijkstra. Utiliza PriorityQueue para
- * seleccionar el menor costo.
+ * Implementacion manual del algoritmo de Dijkstra. Utiliza una lista de
+ * adyacencia y PriorityQueue.
  */
 public class DijkstraAlgorithm {
 
@@ -28,6 +28,20 @@ public class DijkstraAlgorithm {
         }
 
         this.graph = graph;
+    }
+
+    /**
+     * Representa una conexion hacia un vertice vecino.
+     */
+    private static class Neighbor {
+
+        private final String vertexId;
+        private final int weight;
+
+        Neighbor(String vertexId, int weight) {
+            this.vertexId = vertexId;
+            this.weight = weight;
+        }
     }
 
     /**
@@ -57,6 +71,7 @@ public class DijkstraAlgorithm {
 
         @Override
         public String toString() {
+
             if (!isReachable()) {
                 return "No existe una ruta disponible.";
             }
@@ -64,9 +79,11 @@ public class DijkstraAlgorithm {
             StringBuilder result = new StringBuilder();
 
             for (int i = 0; i < path.size(); i++) {
+
                 if (i > 0) {
                     result.append(" -> ");
                 }
+
                 result.append(path.get(i).getId());
             }
 
@@ -92,6 +109,40 @@ public class DijkstraAlgorithm {
     }
 
     /**
+     * Construye una lista de adyacencia con las conexiones disponibles.
+     */
+    private Map<String, List<Neighbor>> buildAdjacency() {
+
+        Map<String, List<Neighbor>> adjacency = new HashMap<>();
+
+        for (Vertex vertex : graph.getVertices()) {
+            adjacency.put(vertex.getId(), new ArrayList<>());
+        }
+
+        for (Edge edge : graph.getEdges()) {
+
+            if (graph.isEdgeBlocked(edge.getId())) {
+                continue;
+            }
+
+            String source = edge.getSource().getId();
+            String destination = edge.getDestination().getId();
+
+            adjacency.get(source).add(
+                    new Neighbor(destination, edge.getWeight())
+            );
+
+            if (!edge.isDirected()) {
+                adjacency.get(destination).add(
+                        new Neighbor(source, edge.getWeight())
+                );
+            }
+        }
+
+        return adjacency;
+    }
+
+    /**
      * Calcula la ruta de menor costo entre dos vertices.
      */
     public PathResult findShortestPath(
@@ -100,6 +151,8 @@ public class DijkstraAlgorithm {
 
         validateVertex(startId);
         validateVertex(destinationId);
+
+        Map<String, List<Neighbor>> adjacency = buildAdjacency();
 
         Map<String, Integer> distances = new HashMap<>();
         Map<String, String> previous = new HashMap<>();
@@ -121,59 +174,45 @@ public class DijkstraAlgorithm {
             QueueNode current = queue.poll();
 
             // Ignorar entradas antiguas de la cola.
-            if (current.distance
-                    > distances.get(current.vertexId)) {
+            if (current.distance > distances.get(current.vertexId)) {
                 continue;
             }
 
-            // Ya llegamos al destino con el menor costo.
+            // El destino ya tiene su menor distancia definitiva.
             if (current.vertexId.equals(destinationId)) {
                 break;
             }
 
-            for (Edge edge : graph.getEdges()) {
-
-                if (graph.isEdgeBlocked(edge.getId())) {
-                    continue;
-                }
-
-                String neighborId = null;
-
-                if (edge.getSource().getId()
-                        .equals(current.vertexId)) {
-
-                    neighborId = edge.getDestination().getId();
-
-                } else if (!edge.isDirected()
-                        && edge.getDestination().getId()
-                                .equals(current.vertexId)) {
-
-                    neighborId = edge.getSource().getId();
-                }
-
-                if (neighborId == null) {
-                    continue;
-                }
+            for (Neighbor neighbor
+                    : adjacency.get(current.vertexId)) {
 
                 int newDistance
-                        = current.distance + edge.getWeight();
+                        = current.distance + neighbor.weight;
 
-                if (newDistance < distances.get(neighborId)) {
+                if (newDistance < distances.get(neighbor.vertexId)) {
 
-                    distances.put(neighborId, newDistance);
+                    distances.put(neighbor.vertexId, newDistance);
 
-                    previous.put(neighborId, current.vertexId);
+                    previous.put(
+                            neighbor.vertexId,
+                            current.vertexId
+                    );
 
                     queue.add(
-                            new QueueNode(neighborId, newDistance)
+                            new QueueNode(
+                                    neighbor.vertexId,
+                                    newDistance
+                            )
                     );
                 }
             }
         }
 
         if (distances.get(destinationId) == Integer.MAX_VALUE) {
+
             return new PathResult(
-                    Collections.emptyList(), Integer.MAX_VALUE
+                    Collections.emptyList(),
+                    Integer.MAX_VALUE
             );
         }
 
@@ -215,6 +254,9 @@ public class DijkstraAlgorithm {
         return new PathResult(path, distance);
     }
 
+    /**
+     * Valida que el vertice exista.
+     */
     private void validateVertex(String id) {
 
         if (id == null || id.isBlank()) {
