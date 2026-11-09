@@ -156,6 +156,8 @@ mvn test
 
 ### 12. Autoría
 
+Carlos Mario Osorio Marquez
+
 Proyecto académico desarrollado para la asignatura Estructura de Datos II.
 
 Ingeniería de Sistemas.
